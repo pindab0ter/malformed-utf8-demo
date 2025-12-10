@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Connection::resolverFor('sqlite', function ($connection, $database, $prefix, $config) {
+            return new ErrorSanitizingSqlLiteConnection($connection, $database, $prefix, $config);
+        });
     }
 }
