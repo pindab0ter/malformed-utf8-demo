@@ -43,6 +43,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Infrastructure Classes
+    |--------------------------------------------------------------------------
+    |
+    | When your application is in debug mode, detailed error messages will
+    | show stack traces. These infrastructure classes will be collapsed as
+    | vendor code to clean up the trace and highlight application frames.
+    |
+    */
+
+    'classes_treated_as_from_vendor' => [
+        \App\Database\ErrorSanitizingSqlLiteConnection::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

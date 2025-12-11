@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Renderer;
 
+use Composer\Autoload\ClassLoader;
+use Illuminate\Foundation\Bootstrap\HandleExceptions;
 use Illuminate\Foundation\Exceptions\Renderer\Exception as BaseException;
 use Illuminate\Foundation\Exceptions\Renderer\Frame;
+use Illuminate\Support\Collection;
+use Override;
 
 /**
  * Custom exception renderer that extends Laravel’s base Exception class.
@@ -19,6 +23,56 @@ use Illuminate\Foundation\Exceptions\Renderer\Frame;
  */
 class Exception extends BaseException
 {
+    /**
+     * Get the exception’s frames.
+     *
+     * This is an exact copy of {@see parent::frames()} except for using
+     * {@see ConfigurableFrame} instead of {@see Frame}.
+     *
+     * @return Collection<int, Frame>
+     */
+    #[Override]
+    public function frames(): Collection
+    {
+        return once(function () {
+            $classMap = array_map(
+                fn (string $path) => (string) realpath($path),
+                array_values(ClassLoader::getRegisteredLoaders())[0]->getClassMap()
+            );
+
+            $trace = array_values(array_filter(
+                $this->exception->getTrace(),
+                fn (array $trace) => isset($trace['file']),
+            ));
+
+            if (($trace[1]['class'] ?? '') === HandleExceptions::class) {
+                array_shift($trace);
+                array_shift($trace);
+            }
+
+            $frames = [];
+            $previousFrame = null;
+
+            foreach (array_reverse($trace) as $frameData) {
+                $frame = new ConfigurableFrame($this->exception, $classMap, $frameData, $this->basePath, $previousFrame);
+                $frames[] = $frame;
+                $previousFrame = $frame;
+            }
+
+            $frames = array_reverse($frames);
+
+            foreach ($frames as $frame) {
+                if (! $frame->isFromVendor()) {
+                    $frame->markAsMain();
+
+                    break;
+                }
+            }
+
+            return new Collection($frames);
+        });
+    }
+
     /**
      * Get the application's SQL queries.
      *
